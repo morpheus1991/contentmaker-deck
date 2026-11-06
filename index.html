@@ -159,7 +159,10 @@ section[data-deck-active] [data-bar]{animation:k-bar 900ms cubic-bezier(.16,1,.3
 [data-loopzoom],[data-catrise]{will-change:transform;transform:translateZ(0);backface-visibility:hidden}
 section[data-deck-active] [data-loopzoom]{animation:k-catzoom 7s ease-in-out infinite}
 section[data-deck-active] [data-fa]{animation:k-fa 5s ease-in-out infinite}
-#deck-hud{position:fixed;right:18px;bottom:14px;font:600 14px/1 Pretendard Variable,system-ui,sans-serif;color:#9ca3b6;background:rgba(20,22,26,.85);padding:6px 10px;border-radius:8px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+#deck-hud{position:fixed;right:18px;bottom:14px;display:flex;align-items:center;gap:10px;font:600 14px/1 Pretendard Variable,system-ui,sans-serif;color:#9ca3b6;opacity:0;transition:opacity .25s;z-index:9}
+#deck-counter{background:rgba(20,22,26,.85);padding:7px 10px;border-radius:8px}
+#deck-fs{font:inherit;color:#fff;background:rgba(20,22,26,.85);border:1px solid #3c414e;padding:7px 12px;border-radius:8px;cursor:pointer}
+#deck-fs:hover{background:#272b34}
 #deck-hud.on{opacity:1}
 #deck-notes{position:fixed;left:0;right:0;bottom:0;max-height:42vh;overflow:auto;background:rgba(0,0,0,.9);color:#fff;font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;font-weight:500;font-size:18px;line-height:1.65;padding:14px 28px 18px;border-top:1px solid #272b34;z-index:50;white-space:pre-wrap;word-break:keep-all}
 #deck-notes[hidden]{display:none}
@@ -457,14 +460,22 @@ class DeckStage extends HTMLElement {
   reset() { this.goTo(0); }
 }
 if (!customElements.get('deck-stage')) customElements.define('deck-stage', DeckStage);
-// 장 번호 HUD: 넘길 때 1.5초 보였다 사라짐(캡처 중엔 data-deck-capture가 있으면 숨김)
+// 우하단 HUD: 장 번호 + 전체 화면 버튼. 마우스를 움직이면 보였다가 2초 뒤 사라짐. Esc는 브라우저가 전체 화면을 해제함.
 (() => {
-  const hud = document.createElement('div'); hud.id = 'deck-hud'; document.body.appendChild(hud);
+  const hud = document.createElement('div'); hud.id = 'deck-hud';
+  const counter = document.createElement('span'); counter.id = 'deck-counter';
+  const fs = document.createElement('button'); fs.id = 'deck-fs'; fs.type = 'button'; fs.title = '전체 화면 (F) · Esc로 해제';
+  const render = () => { fs.textContent = document.fullscreenElement ? '⤢ 전체 화면 해제 (Esc)' : '⤢ 전체 화면 (F)'; };
+  fs.addEventListener('click', event => { event.stopPropagation(); document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); });
+  document.addEventListener('fullscreenchange', render); render();
+  hud.append(counter, fs); document.body.appendChild(hud);
   let timer = 0;
-  document.addEventListener('slidechange', event => {
-    hud.textContent = `${event.detail.index + 1} / ${event.detail.total}`;
-    hud.classList.add('on'); clearTimeout(timer); timer = setTimeout(() => hud.classList.remove('on'), 1500);
-  });
+  const show = () => { hud.classList.add('on'); clearTimeout(timer); timer = setTimeout(() => hud.classList.remove('on'), 2000); };
+  document.addEventListener('slidechange', event => { counter.textContent = `${event.detail.index + 1} / ${event.detail.total}`; show(); });
+  { const st = document.querySelector('deck-stage'); if (st && st.index >= 0) counter.textContent = `${st.index + 1} / ${st.length}`; }
+  document.addEventListener('mousemove', show);
+  hud.addEventListener('mouseenter', () => { clearTimeout(timer); hud.classList.add('on'); });
+  hud.addEventListener('mouseleave', show);
 })();
 // 검토용 대본 패널: n 키(한글 자판 ㅜ 포함, e.code 기준)로 토글. 기본 숨김이라 캡처엔 영향 없음.
 (() => {
